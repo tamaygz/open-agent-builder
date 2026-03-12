@@ -54,11 +54,11 @@ import ConfirmDialog from "./ConfirmDialog";
 import EdgeLabelModal from "./EdgeLabelModal";
 import ShareWorkflowModal from "./ShareWorkflowModal";
 import SaveAsTemplateModal from "./SaveAsTemplateModal";
+import WorkflowAIChatbox, { type AIWorkflowAction } from "./WorkflowAIChatbox";
 import { toast } from "sonner";
 import { useWorkflow } from "@/hooks/useWorkflow";
 import { useWorkflowExecution } from "@/hooks/useWorkflowExecution";
-// Remove static template import - now loading from Convex
-// import { getTemplate } from "@/lib/workflow/templates";
+import { getTemplate } from "@/lib/workflow/templates";
 import { getWorkflow } from "@/lib/workflow/storage";
 import type { WorkflowNode, WorkflowEdge } from "@/lib/workflow/types";
 import { nodeTypes } from "./CustomNodes";
@@ -470,7 +470,8 @@ function WorkflowBuilderInner({ onBack, initialWorkflowId, initialTemplateId }: 
         return;
       }
 
-      // If template is null, it doesn't exist in Convex yet - seed templates
+      // If template is null, it doesn't exist in Convex yet - seed templates,
+      // then fall back to local built-in templates so the UI is never blank.
       if (template === null) {
         console.log('Template not found in Convex, seeding templates...');
         seedTemplates()
@@ -480,8 +481,75 @@ function WorkflowBuilderInner({ onBack, initialWorkflowId, initialTemplateId }: 
           })
           .catch(err => {
             console.error('Failed to seed templates:', err);
-            toast.error('Failed to load template');
+            const localTemplate = getTemplate(initialTemplateId);
+            if (!localTemplate) {
+              toast.error('Failed to load template');
+              return;
+            }
+
+            const cleaned = cleanupInvalidEdges(localTemplate.nodes, localTemplate.edges);
+            const templateNodes = cleaned.nodes.map((n: any) => {
+              const nodeData = n.data as any;
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  label: createNodeLabel(nodeData.nodeName || nodeData.label as string, getNodeColor(n.type), n.type),
+                },
+              };
+            });
+
+            const layoutedNodes = autoLayoutNodes(templateNodes as any, cleaned.edges as any);
+            setNodes(layoutedNodes as any);
+            setEdges(cleaned.edges as any);
+            resetNodeIdCounter(layoutedNodes as any);
+
+            const workflowId = `workflow_${Date.now()}_${localTemplate.id}`;
+            saveWorkflow({
+              id: workflowId,
+              name: localTemplate.name,
+              description: localTemplate.description,
+              nodes: localTemplate.nodes,
+              edges: localTemplate.edges,
+            });
+
+            setInitialized(true);
+            toast.success('Loaded local template fallback');
           });
+
+        // Also try immediate local fallback so template clicks feel instant.
+        const localTemplate = getTemplate(initialTemplateId);
+        if (localTemplate) {
+          const cleaned = cleanupInvalidEdges(localTemplate.nodes, localTemplate.edges);
+          const templateNodes = cleaned.nodes.map((n: any) => {
+            const nodeData = n.data as any;
+            return {
+              ...n,
+              data: {
+                ...n.data,
+                label: createNodeLabel(nodeData.nodeName || nodeData.label as string, getNodeColor(n.type), n.type),
+              },
+            };
+          });
+
+          const layoutedNodes = autoLayoutNodes(templateNodes as any, cleaned.edges as any);
+          setNodes(layoutedNodes as any);
+          setEdges(cleaned.edges as any);
+          resetNodeIdCounter(layoutedNodes as any);
+
+          const workflowId = `workflow_${Date.now()}_${localTemplate.id}`;
+          saveWorkflow({
+            id: workflowId,
+            name: localTemplate.name,
+            description: localTemplate.description,
+            nodes: localTemplate.nodes,
+            edges: localTemplate.edges,
+          });
+
+          setInitialized(true);
+          return;
+        }
+
         return;
       }
 
@@ -629,6 +697,88 @@ function WorkflowBuilderInner({ onBack, initialWorkflowId, initialTemplateId }: 
       </div>
     );
   };
+
+  const handleApplyAIActions = useCallback((actions: AIWorkflowAction[]) => {
+    let addedCount = 0;
+    let updatedCount = 0;
+    let deletedCount = 0;
+
+    for (const action of actions) {
+      if (action.type === 'replace_workflow' && action.nodes && action.edges) {
+        // Replace the entire workflow
+        const layoutedNodes = action.nodes.map((n: any) => ({
+          ...n,
+          data: {
+            ...n.data,
+            label: createNodeLabel(
+              n.data?.name || n.data?.nodeName || n.nodeType || 'Node',
+              getNodeColor(n.nodeType || n.type || 'agent'),
+              n.nodeType || n.type,
+            ),
+            nodeType: n.nodeType || n.type,
+            nodeName: n.data?.name || n.data?.nodeName,
+          },
+        }));
+        setNodes(layoutedNodes);
+        setEdges(action.edges);
+        resetNodeIdCounter(layoutedNodes);
+        toast.success('Workflow replaced by AI', {
+          description: `${layoutedNodes.length} nodes, ${action.edges.length} edges`,
+        });
+        return;
+      }
+
+      if (action.type === 'add_node' && action.node) {
+        const n = action.node;
+        const nodeType = n.nodeType || 'agent';
+        const newNode = {
+          id: n.id || getId(),
+          type: nodeType,
+          position: n.position || { x: 400, y: 300 },
+          data: {
+            ...n.data,
+            label: createNodeLabel(
+              n.name || n.data?.nodeName || nodeType,
+              getNodeColor(nodeType),
+              nodeType,
+            ),
+            nodeType,
+            nodeName: n.name || n.data?.nodeName || nodeType,
+            name: n.name || n.data?.name || n.data?.nodeName || nodeType,
+          },
+        };
+        setNodes((nds) => nds.concat(newNode));
+        addedCount++;
+      } else if (action.type === 'update_node' && action.nodeId && action.data) {
+        handleUpdateNodeData(action.nodeId, action.data);
+        updatedCount++;
+      } else if (action.type === 'delete_node' && action.nodeId) {
+        setNodes((nds) => nds.filter((n) => n.id !== action.nodeId));
+        setEdges((eds) =>
+          eds.filter((e) => e.source !== action.nodeId && e.target !== action.nodeId)
+        );
+        deletedCount++;
+      } else if (action.type === 'add_edge' && action.edge) {
+        const newEdge = {
+          id: action.edge.id || `edge_${action.edge.source}_${action.edge.target}`,
+          source: action.edge.source,
+          target: action.edge.target,
+          ...(action.edge.sourceHandle ? { sourceHandle: action.edge.sourceHandle } : {}),
+        };
+        setEdges((eds) => [...eds, newEdge]);
+      } else if (action.type === 'delete_edge' && action.edgeId) {
+        setEdges((eds) => eds.filter((e) => e.id !== action.edgeId));
+      }
+    }
+
+    const parts: string[] = [];
+    if (addedCount > 0) parts.push(`${addedCount} node${addedCount !== 1 ? 's' : ''} added`);
+    if (updatedCount > 0) parts.push(`${updatedCount} node${updatedCount !== 1 ? 's' : ''} updated`);
+    if (deletedCount > 0) parts.push(`${deletedCount} node${deletedCount !== 1 ? 's' : ''} deleted`);
+    if (parts.length > 0) {
+      toast.success('AI changes applied', { description: parts.join(', ') });
+    }
+  }, [setNodes, setEdges, handleUpdateNodeData, createNodeLabel, getNodeColor]);
 
   const getNodeColor = (type: string): string => {
     const colorMap: Record<string, string> = {
@@ -1730,13 +1880,18 @@ function WorkflowBuilderInner({ onBack, initialWorkflowId, initialTemplateId }: 
             onDelete={handleDeleteNode}
             onUpdate={handleUpdateNodeData}
           />
-        ) : (selectedNode?.data as any)?.nodeType === 'extract' ? (
+        ) : selectedNode && (selectedNode.data as any)?.nodeType === 'extract' ? (
           <ExtractNodePanel
-            node={selectedNode}
-            nodes={nodes}
+            nodeData={{
+              id: selectedNode.id,
+              ...(selectedNode.data as any),
+            }}
             onClose={() => setSelectedNode(null)}
-            onDelete={handleDeleteNode}
             onUpdate={handleUpdateNodeData}
+            onAddMCP={() => {
+              setTargetAgentForMCP(selectedNode);
+              setShowMCPSelector(true);
+            }}
           />
         ) : (selectedNode?.data as any)?.nodeType === 'http' ? (
           <HTTPNodePanel
@@ -1961,6 +2116,14 @@ function WorkflowBuilderInner({ onBack, initialWorkflowId, initialTemplateId }: 
           </div>
         </motion.div>
       )}
+
+      {/* AI Workflow Designer Chatbox */}
+      <WorkflowAIChatbox
+        nodes={nodes}
+        edges={edges}
+        workflowName={workflow?.name}
+        onApplyActions={handleApplyAIActions}
+      />
 
       {/* Context Menu */}
       {contextMenu && (

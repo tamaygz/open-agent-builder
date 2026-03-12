@@ -36,6 +36,7 @@ import ButtonUI from "@/components/ui/shadcn/button";
 function StyleGuidePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED !== 'false';
 
   const [tab] = useState<Endpoint>(Endpoint.Scrape);
   const [url, setUrl] = useState<string>("");
@@ -90,13 +91,21 @@ function StyleGuidePageContent() {
   return (
     <HeaderProvider>
       {showWorkflowBuilder ? (
-        <SignedIn>
+        authEnabled ? (
+          <SignedIn>
+            <WorkflowBuilder
+              onBack={handleReset}
+              initialWorkflowId={loadWorkflowId}
+              initialTemplateId={loadTemplateId}
+            />
+          </SignedIn>
+        ) : (
           <WorkflowBuilder
             onBack={handleReset}
             initialWorkflowId={loadWorkflowId}
             initialTemplateId={loadTemplateId}
           />
-        </SignedIn>
+        )
       ) : (
       <div className="min-h-screen bg-background-base">
         {/* Header/Navigation Section */}
@@ -132,24 +141,32 @@ function StyleGuidePageContent() {
                 </a>
 
                 {/* Clerk Auth */}
-                <SignedOut>
-                  <SignInButton mode="modal">
-                    <button className="px-16 py-8 bg-heat-100 hover:bg-heat-200 text-white rounded-8 text-body-medium font-medium transition-all active:scale-[0.98]">
-                      Sign In
-                    </button>
-                  </SignInButton>
-                </SignedOut>
+                {authEnabled ? (
+                  <>
+                    <SignedOut>
+                      <SignInButton mode="modal">
+                        <button className="px-16 py-8 bg-heat-100 hover:bg-heat-200 text-white rounded-8 text-body-medium font-medium transition-all active:scale-[0.98]">
+                          Sign In
+                        </button>
+                      </SignInButton>
+                    </SignedOut>
 
-                <SignedIn>
-                  <UserButton
-                    appearance={{
-                      elements: {
-                        avatarBox: "w-32 h-32",
-                      }
-                    }}
-                    afterSignOutUrl="/"
-                  />
-                </SignedIn>
+                    <SignedIn>
+                      <UserButton
+                        appearance={{
+                          elements: {
+                            avatarBox: "w-32 h-32",
+                          }
+                        }}
+                        afterSignOutUrl="/"
+                      />
+                    </SignedIn>
+                  </>
+                ) : (
+                  <span className="px-12 py-6 rounded-8 text-body-small bg-black-alpha-4 text-black-alpha-64">
+                    Local Test Mode
+                  </span>
+                )}
               </div>
             </div>
           </HeaderWrapper>
@@ -189,7 +206,34 @@ function StyleGuidePageContent() {
                   </p>
                 </motion.div>
               ) : (
-                <SignedIn>
+                authEnabled ? (
+                  <SignedIn>
+                    <motion.div
+                      key="step2"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5 }}
+                      className="relative container px-16"
+                    >
+                      <Step2Placeholder
+                        onReset={handleReset}
+                        onCreateWorkflow={handleCreateWorkflow}
+                        onLoadWorkflow={(id) => {
+                          setLoadWorkflowId(id);
+                          setLoadTemplateId(null);
+                          setShowWorkflowBuilder(true);
+                          router.push(`/?workflow=${id}`);
+                        }}
+                        onLoadTemplate={(templateId) => {
+                          setLoadTemplateId(templateId);
+                          setLoadWorkflowId(null);
+                          setShowWorkflowBuilder(true);
+                          router.push(`/?template=${templateId}`);
+                        }}
+                      />
+                    </motion.div>
+                  </SignedIn>
+                ) : (
                   <motion.div
                     key="step2"
                     initial={{ opacity: 0 }}
@@ -214,7 +258,7 @@ function StyleGuidePageContent() {
                       }}
                     />
                   </motion.div>
-                </SignedIn>
+                )
               )}
             </AnimatePresence>
           </div>
@@ -227,24 +271,35 @@ function StyleGuidePageContent() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.5 }}
             >
-              {/* When signed in - navigate to workflows */}
-              <SignedIn>
+              {authEnabled ? (
+                <>
+                  {/* When signed in - navigate to workflows */}
+                  <SignedIn>
+                    <button
+                      onClick={handleSubmit}
+                      className="bg-heat-100 hover:bg-heat-200 text-white font-medium px-32 py-12 rounded-10 transition-all active:scale-[0.98] text-body-medium shadow-md cursor-pointer"
+                    >
+                      Start building
+                    </button>
+                  </SignedIn>
+
+                  {/* When signed out - open sign-in modal */}
+                  <SignedOut>
+                    <SignInButton mode="modal">
+                      <button className="bg-heat-100 hover:bg-heat-200 text-white font-medium px-32 py-12 rounded-10 transition-all active:scale-[0.98] text-body-medium shadow-md cursor-pointer">
+                        Start building
+                      </button>
+                    </SignInButton>
+                  </SignedOut>
+                </>
+              ) : (
                 <button
                   onClick={handleSubmit}
                   className="bg-heat-100 hover:bg-heat-200 text-white font-medium px-32 py-12 rounded-10 transition-all active:scale-[0.98] text-body-medium shadow-md cursor-pointer"
                 >
                   Start building
                 </button>
-              </SignedIn>
-
-              {/* When signed out - open sign-in modal */}
-              <SignedOut>
-                <SignInButton mode="modal">
-                  <button className="bg-heat-100 hover:bg-heat-200 text-white font-medium px-32 py-12 rounded-10 transition-all active:scale-[0.98] text-body-medium shadow-md cursor-pointer">
-                    Start building
-                  </button>
-                </SignInButton>
-              </SignedOut>
+              )}
             </motion.div>
           )}
         </section>

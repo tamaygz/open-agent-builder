@@ -3,6 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "setup:init": "test -f .env.local || cp .env.example .env.local",
+    "setup:check": "node scripts/verify-setup.mjs",
+    "stack:refresh-browser-data": "npm i baseline-browser-mapping@latest -D && npx update-browserslist-db@latest",
+    "stack:prepare": "npm install && npm run setup:init && npm run setup:check",
+    "stack:build": "npm run build",
+    "stack:up": "npm run dev:all",
     "dev": "lsof -ti:3000,3001 | xargs kill -9 2>/dev/null || true && next dev",
     "dev:all": "concurrently \"npx convex dev\" \"npm run dev\"",
     "build": "next build",

@@ -8,7 +8,7 @@
 export interface LLMModel {
   id: string;
   name: string;
-  provider: 'anthropic' | 'openai' | 'groq';
+  provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google';
   contextWindow: number;
   inputCostPer1M: number;
   outputCostPer1M: number;
@@ -114,12 +114,76 @@ export const llmProviders: LLMProvider[] = [
       },
     ],
   },
+  {
+    id: 'github',
+    name: 'GitHub Models',
+    envKey: 'GITHUB_MODELS_API_KEY',
+    defaultModel: 'openai/gpt-4.1',
+    models: [
+      {
+        id: 'openai/gpt-4.1',
+        name: 'GPT-4.1 via GitHub Models',
+        provider: 'github',
+        contextWindow: 128000,
+        inputCostPer1M: 0,
+        outputCostPer1M: 0,
+        supportsJSON: true,
+        supportsMCP: false,
+        maxTokens: 16384,
+        description: 'OpenAI-compatible GitHub Models endpoint using a GitHub token',
+      },
+      {
+        id: 'openai/gpt-4.1-mini',
+        name: 'GPT-4.1 Mini via GitHub Models',
+        provider: 'github',
+        contextWindow: 128000,
+        inputCostPer1M: 0,
+        outputCostPer1M: 0,
+        supportsJSON: true,
+        supportsMCP: false,
+        maxTokens: 16384,
+        description: 'Lower-cost GitHub Models option for testing and iteration',
+      },
+    ],
+  },
+  {
+    id: 'google',
+    name: 'Google Gemini',
+    envKey: 'GOOGLE_API_KEY',
+    defaultModel: 'gemini-2.5-flash',
+    models: [
+      {
+        id: 'gemini-2.5-flash',
+        name: 'Gemini 2.5 Flash',
+        provider: 'google',
+        contextWindow: 1048576,
+        inputCostPer1M: 0,
+        outputCostPer1M: 0,
+        supportsJSON: true,
+        supportsMCP: false,
+        maxTokens: 65536,
+        description: 'Fast general-purpose Gemini model via the OpenAI-compatible endpoint',
+      },
+      {
+        id: 'gemini-2.5-pro',
+        name: 'Gemini 2.5 Pro',
+        provider: 'google',
+        contextWindow: 1048576,
+        inputCostPer1M: 0,
+        outputCostPer1M: 0,
+        supportsJSON: true,
+        supportsMCP: false,
+        maxTokens: 65536,
+        description: 'Higher-quality Gemini model for more complex reasoning tasks',
+      },
+    ],
+  },
 ];
 
 /**
  * Get default model for a provider
  */
-export function getDefaultModel(provider: 'anthropic' | 'openai' | 'groq'): string {
+export function getDefaultModel(provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google'): string {
   const config = llmProviders.find(p => p.id === provider);
   return config?.defaultModel || '';
 }
@@ -127,7 +191,7 @@ export function getDefaultModel(provider: 'anthropic' | 'openai' | 'groq'): stri
 /**
  * Get all models for a provider
  */
-export function getModelsForProvider(provider: 'anthropic' | 'openai' | 'groq'): LLMModel[] {
+export function getModelsForProvider(provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google'): LLMModel[] {
   const config = llmProviders.find(p => p.id === provider);
   return config?.models || [];
 }
@@ -165,7 +229,7 @@ export function getAllModels(): Array<LLMModel & { fullId: string }> {
 /**
  * Check if provider API key is configured
  */
-export function isProviderConfigured(provider: 'anthropic' | 'openai' | 'groq'): boolean {
+export function isProviderConfigured(provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google'): boolean {
   const config = llmProviders.find(p => p.id === provider);
   if (!config) return false;
 

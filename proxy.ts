@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
@@ -19,7 +20,9 @@ const isApiKeyRoute = createRouteMatcher([
   '/api/workflows/:workflowId/resume',
 ])
 
-export default clerkMiddleware(async (auth, request) => {
+const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED !== 'false';
+
+const clerkHandler = clerkMiddleware(async (auth, request) => {
   // API key routes bypass Clerk auth (will be validated in the route handler)
   if (isApiKeyRoute(request)) {
     return
@@ -30,6 +33,14 @@ export default clerkMiddleware(async (auth, request) => {
     await auth.protect()
   }
 })
+
+export default function middleware(request: Request) {
+  if (!authEnabled) {
+    return NextResponse.next();
+  }
+
+  return (clerkHandler as any)(request);
+}
 
 export const config = {
   matcher: [

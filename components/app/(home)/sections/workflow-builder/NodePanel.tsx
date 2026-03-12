@@ -7,7 +7,7 @@ import VariableReferencePicker from "./VariableReferencePicker";
 import { toast } from "sonner";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useUser } from "@clerk/nextjs";
+import { useOptionalUser } from "@/lib/auth/useOptionalUser";
 import { Id } from "@/convex/_generated/dataModel";
 import FirecrawlLogo from "@/components/icons/FirecrawlLogo";
 
@@ -34,7 +34,7 @@ export default function NodePanel({
   onUpdate,
   onOpenSettings,
 }: NodePanelProps) {
-  const { user } = useUser();
+  const { user } = useOptionalUser();
 
   // MCP states - now store only server IDs, not full configs
   const [showMCPSelector, setShowMCPSelector] = useState(false);

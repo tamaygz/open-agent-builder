@@ -8,9 +8,9 @@
 export default {
   providers: [
     {
-      // This reads from Convex environment variable (not process.env)
       // Set via: npx convex env set CLERK_JWT_ISSUER_DOMAIN "https://..."
-      domain: "https://oriented-quetzal-4.clerk.accounts.dev",
+      // Keep the previous domain as a safe fallback for existing deployments.
+      domain: process.env.CLERK_JWT_ISSUER_DOMAIN || "https://oriented-quetzal-4.clerk.accounts.dev",
       applicationID: "convex",
     },
   ],

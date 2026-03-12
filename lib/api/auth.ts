@@ -21,6 +21,16 @@ export interface ApiAuthResult {
  */
 export async function validateApiKey(request: NextRequest): Promise<ApiAuthResult> {
   try {
+    const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED !== 'false';
+
+    if (!authEnabled) {
+      return {
+        authenticated: true,
+        userId: 'local-test-user',
+        authType: 'api-key',
+      };
+    }
+
     // First, check for Clerk authentication (UI users)
     const { userId } = await auth();
     if (userId) {

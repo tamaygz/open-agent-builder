@@ -26,8 +26,19 @@ export const list = query({
       return workflows;
     }
 
-    // If not authenticated, return empty array
-    return [];
+    // If not authenticated, return anonymous workflows (local/test mode)
+    const anonymousWorkflows = await ctx.db
+      .query("workflows")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("userId"), undefined),
+          q.neq(q.field("isTemplate"), true)
+        )
+      )
+      .order("desc")
+      .collect();
+
+    return anonymousWorkflows;
   },
 });
 

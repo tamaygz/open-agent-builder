@@ -42,6 +42,7 @@ export function getConvexClient(): ConvexHttpClient {
  */
 export async function getAuthenticatedConvexClient(): Promise<ConvexHttpClient> {
   const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED !== 'false';
 
   if (!url) {
     throw new Error(
@@ -51,6 +52,10 @@ export async function getAuthenticatedConvexClient(): Promise<ConvexHttpClient> 
   }
 
   const client = new ConvexHttpClient(url);
+
+  if (!authEnabled) {
+    return client;
+  }
 
   try {
     // Get Clerk auth token

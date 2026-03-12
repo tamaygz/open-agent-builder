@@ -88,6 +88,52 @@ Before you begin, you'll need:
 
 ## Installation & Setup
 
+### Quick Start in GitHub Codespaces
+
+If you opened this repository in Codespaces, use this streamlined flow:
+
+```bash
+# Dependencies are often preinstalled, but this is safe to re-run
+npm install
+
+# Create .env.local from template (no-op if it already exists)
+npm run setup:init
+
+# Fill .env.local with your Convex, Clerk, and Firecrawl keys
+
+# Validate required environment variables
+npm run setup:check
+```
+
+Or use the scripted full-stack flow:
+
+```bash
+# 1) Prepare dependencies and env scaffolding
+npm run stack:prepare
+
+# 2) (Optional) refresh browser baseline data warnings
+npm run stack:refresh-browser-data
+
+# 3) Verify production build
+npm run stack:build
+
+# 4) Start Convex + Next.js together
+npm run stack:up
+```
+
+Then start both services:
+
+```bash
+npm run dev:all
+```
+
+Or run separately in two terminals:
+
+```bash
+npx convex dev
+npm run dev
+```
+
 ### 1. Clone the Repository
 
 ```bash
@@ -188,6 +234,18 @@ OPENAI_API_KEY=sk-...
 
 # Groq (MCP support coming soon)
 GROQ_API_KEY=gsk_...
+
+# GitHub Models (OpenAI-compatible endpoint via GitHub token)
+GITHUB_MODELS_API_KEY=github_pat_...
+# Or reuse an existing token instead
+GITHUB_TOKEN=github_pat_...
+# Optional override
+GITHUB_MODELS_BASE_URL=https://models.inference.ai.azure.com
+
+# Google Gemini (OpenAI-compatible endpoint)
+GOOGLE_API_KEY=AIza...
+# Optional override
+GOOGLE_OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
 ```
 
 > **Important:** For workflows using MCP tools (like Firecrawl integration), Anthropic Claude is currently the recommended provider as it has native MCP support. OpenAI and Groq MCP support is coming soon.

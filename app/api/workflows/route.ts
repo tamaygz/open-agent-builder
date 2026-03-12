@@ -3,11 +3,29 @@ import { getConvexClient, getAuthenticatedConvexClient, api, isConvexConfigured 
 
 export const dynamic = 'force-dynamic';
 
+function mapWorkflow(w: any) {
+  return {
+    id: w.customId || w._id,
+    name: w.name,
+    description: w.description,
+    category: w.category,
+    tags: w.tags,
+    difficulty: w.difficulty,
+    estimatedTime: w.estimatedTime,
+    nodes: w.nodes,
+    edges: w.edges,
+    createdAt: w.createdAt,
+    updatedAt: w.updatedAt,
+    nodeCount: w.nodes?.length || 0,
+    edgeCount: w.edges?.length || 0,
+  };
+}
+
 /**
  * GET /api/workflows - List all workflows
- * Uses Convex for storage
+ * Uses Convex for storage and gracefully falls back when auth token retrieval fails.
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     if (!isConvexConfigured()) {
       return NextResponse.json({
@@ -18,37 +36,36 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const convex = await getAuthenticatedConvexClient();
+    try {
+      const authedConvex = await getAuthenticatedConvexClient();
+      const authedWorkflows = await authedConvex.query(api.workflows.listWorkflows, {});
+
+      return NextResponse.json({
+        workflows: authedWorkflows.map(mapWorkflow),
+        total: authedWorkflows.length,
+        source: 'convex-auth',
+      });
+    } catch (authError) {
+      console.warn('Authenticated workflow query failed, falling back to public client:', authError);
+    }
+
+    const convex = getConvexClient();
     const workflows = await convex.query(api.workflows.listWorkflows, {});
 
     return NextResponse.json({
-      workflows: workflows.map((w: any) => ({
-        id: w.customId || w._id, // Use customId if exists, otherwise Convex ID
-        name: w.name,
-        description: w.description,
-        category: w.category,
-        tags: w.tags,
-        difficulty: w.difficulty,
-        estimatedTime: w.estimatedTime,
-        nodes: w.nodes,
-        edges: w.edges,
-        createdAt: w.createdAt,
-        updatedAt: w.updatedAt,
-        nodeCount: w.nodes?.length || 0,
-        edgeCount: w.edges?.length || 0,
-      })),
+      workflows: workflows.map(mapWorkflow),
       total: workflows.length,
-      source: 'convex',
+      source: 'convex-fallback',
     });
   } catch (error) {
     console.error('Error fetching workflows:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to fetch workflows',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    // Keep the UI usable in dev if Convex/Clerk setup is partially configured.
+    return NextResponse.json({
+      workflows: [],
+      total: 0,
+      source: 'error-fallback',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 }
 

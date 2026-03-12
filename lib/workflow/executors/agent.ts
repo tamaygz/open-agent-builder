@@ -10,7 +10,7 @@ import { resolveMCPServers, migrateMCPData } from '@/lib/mcp/resolver';
 export async function executeAgentNode(
   node: WorkflowNode,
   state: WorkflowState,
-  apiKeys?: { anthropic?: string; groq?: string; openai?: string; firecrawl?: string }
+  apiKeys?: { anthropic?: string; groq?: string; openai?: string; github?: string; google?: string; firecrawl?: string }
 ): Promise<any> {
   const { data } = node;
 
@@ -378,6 +378,32 @@ export async function executeAgentNode(
         responseText = response.content as string;
         usage = response.response_metadata?.usage || {};
       }
+    } else if (provider === 'github' && apiKeys?.github) {
+      const { ChatOpenAI } = await import('@langchain/openai');
+      const model = new ChatOpenAI({
+        apiKey: apiKeys.github,
+        model: modelName,
+        configuration: {
+          baseURL: process.env.GITHUB_MODELS_BASE_URL || 'https://models.inference.ai.azure.com',
+        },
+      });
+
+      const response = await model.invoke(messages);
+      responseText = response.content as string;
+      usage = response.response_metadata?.usage || {};
+    } else if (provider === 'google' && apiKeys?.google) {
+      const { ChatOpenAI } = await import('@langchain/openai');
+      const model = new ChatOpenAI({
+        apiKey: apiKeys.google,
+        model: modelName,
+        configuration: {
+          baseURL: process.env.GOOGLE_OPENAI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai',
+        },
+      });
+
+      const response = await model.invoke(messages);
+      responseText = response.content as string;
+      usage = response.response_metadata?.usage || {};
     } else {
       throw new Error(`No API key available for provider: ${provider}`);
     }
@@ -421,7 +447,7 @@ export async function executeAgentNode(
     }
 
     if (errorMessage.includes('No API key available')) {
-      throw new Error('No API key configured. Please add an Anthropic, OpenAI, or Groq API key in your .env.local file.');
+      throw new Error('No API key configured. Please add an Anthropic, OpenAI, Groq, GitHub Models, or Google Gemini API key in your .env.local file.');
     }
 
     throw new Error(`Agent execution failed: ${errorMessage}`);

@@ -9,6 +9,12 @@ const nextConfig = {
       },
     ],
   },
+  experimental: {
+    serverActions: {
+      // Needed for Codespaces preview domains to avoid "Invalid Server Actions request".
+      allowedOrigins: ['localhost:3000', '*.app.github.dev'],
+    },
+  },
   // Mark server-only packages for Next.js 16+
   serverExternalPackages: [
     '@langchain/langgraph',
