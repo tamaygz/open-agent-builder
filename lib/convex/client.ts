@@ -60,18 +60,27 @@ export async function getAuthenticatedConvexClient(): Promise<ConvexHttpClient> 
   try {
     // Get Clerk auth token
     const { getToken } = await auth();
-    const token = await getToken({ template: "convex" });
+    let token: string | null = null;
+    try {
+      token = await getToken({ template: "convex" });
+    } catch (tokenError: any) {
+      // 404 means the "convex" JWT template hasn't been created in Clerk yet.
+      // Any other transient error is also safe to ignore here — we just proceed
+      // with an unauthenticated client rather than crashing the request.
+      const isExpected =
+        tokenError?.status === 404 ||
+        tokenError?.clerkError === true ||
+        (tokenError?.message ?? '').includes('Not Found');
+      if (!isExpected) {
+        console.warn('Unexpected Clerk token error (proceeding unauthenticated):', tokenError?.message ?? tokenError);
+      }
+    }
 
-    // Set the authentication token
     if (token) {
       client.setAuth(token);
-    } else {
-      console.warn('No Clerk token available - using unauthenticated client');
     }
   } catch (error) {
-    console.error('Failed to get Clerk token:', error);
-    // Continue with unauthenticated client instead of throwing
-    // This allows the app to function even if Clerk auth fails
+    // auth() itself failed (e.g. middleware not running). Safe to swallow.
   }
 
   return client;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getConvexClient, getAuthenticatedConvexClient, api, isConvexConfigured } from '@/lib/convex/client';
+import { listTemplates } from '@/lib/workflow/templates';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,25 +47,30 @@ export async function GET(_request: NextRequest) {
         source: 'convex-auth',
       });
     } catch (authError) {
-      console.warn('Authenticated workflow query failed, falling back to public client:', authError);
+      // Auth failed (e.g. missing Clerk JWT template). Try unauthenticated.
     }
 
-    const convex = getConvexClient();
-    const workflows = await convex.query(api.workflows.listWorkflows, {});
+    try {
+      const convex = getConvexClient();
+      const workflows = await convex.query(api.workflows.listWorkflows, {});
+      return NextResponse.json({
+        workflows: workflows.map(mapWorkflow),
+        total: workflows.length,
+        source: 'convex-fallback',
+      });
+    } catch {
+      // Convex dev server not running — fall through to local templates.
+    }
 
-    return NextResponse.json({
-      workflows: workflows.map(mapWorkflow),
-      total: workflows.length,
-      source: 'convex-fallback',
-    });
+    const local = listTemplates();
+    return NextResponse.json({ workflows: local, total: local.length, source: 'local-templates' });
   } catch (error) {
-    console.error('Error fetching workflows:', error);
-    // Keep the UI usable in dev if Convex/Clerk setup is partially configured.
+    console.warn('Unexpected error in GET /api/workflows, serving local templates:', error instanceof Error ? error.message : error);
+    const local = listTemplates();
     return NextResponse.json({
-      workflows: [],
-      total: 0,
-      source: 'error-fallback',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      workflows: local,
+      total: local.length,
+      source: 'local-templates',
     });
   }
 }
