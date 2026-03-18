@@ -14,9 +14,11 @@ export async function GET() {
       googleConfigured: !!process.env.GOOGLE_API_KEY,
       firecrawlConfigured: !!process.env.FIRECRAWL_API_KEY,
       arcadeConfigured: !!process.env.ARCADE_API_KEY,
+      openapiConfigured: !!process.env.OPENAPI_API_KEY,
+      openapiBaseUrl: process.env.OPENAPI_BASE_URL || null,
+      openapiModel: process.env.OPENAPI_MODEL || null,
       hasKeys: !!(
-        (process.env.ANTHROPIC_API_KEY || process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY || process.env.GITHUB_MODELS_API_KEY || process.env.GITHUB_TOKEN || process.env.GOOGLE_API_KEY) &&
-        process.env.FIRECRAWL_API_KEY
+        (process.env.ANTHROPIC_API_KEY || process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY || process.env.GITHUB_MODELS_API_KEY || process.env.GITHUB_TOKEN || process.env.GOOGLE_API_KEY || process.env.OPENAPI_API_KEY)
       ),
     };
 

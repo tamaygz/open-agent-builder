@@ -8,7 +8,7 @@
 export interface LLMModel {
   id: string;
   name: string;
-  provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google';
+  provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google' | 'openapi';
   contextWindow: number;
   inputCostPer1M: number;
   outputCostPer1M: number;
@@ -178,12 +178,32 @@ export const llmProviders: LLMProvider[] = [
       },
     ],
   },
+  {
+    id: 'openapi',
+    name: 'Custom OpenAPI',
+    envKey: 'OPENAPI_API_KEY',
+    defaultModel: process.env.OPENAPI_MODEL || 'gemma-3-4b',
+    models: [
+      {
+        id: process.env.OPENAPI_MODEL || 'gemma-3-4b',
+        name: process.env.OPENAPI_MODEL || 'gemma-3-4b',
+        provider: 'openapi' as const,
+        contextWindow: 32768,
+        inputCostPer1M: 0,
+        outputCostPer1M: 0,
+        supportsJSON: true,
+        supportsMCP: false,
+        maxTokens: 8192,
+        description: `Custom OpenAI-compatible endpoint (${process.env.OPENAPI_BASE_URL || 'http://192.168.1.31:1234/v1'})`,
+      },
+    ],
+  },
 ];
 
 /**
  * Get default model for a provider
  */
-export function getDefaultModel(provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google'): string {
+export function getDefaultModel(provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google' | 'openapi'): string {
   const config = llmProviders.find(p => p.id === provider);
   return config?.defaultModel || '';
 }
@@ -191,7 +211,7 @@ export function getDefaultModel(provider: 'anthropic' | 'openai' | 'groq' | 'git
 /**
  * Get all models for a provider
  */
-export function getModelsForProvider(provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google'): LLMModel[] {
+export function getModelsForProvider(provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google' | 'openapi'): LLMModel[] {
   const config = llmProviders.find(p => p.id === provider);
   return config?.models || [];
 }
@@ -229,7 +249,7 @@ export function getAllModels(): Array<LLMModel & { fullId: string }> {
 /**
  * Check if provider API key is configured
  */
-export function isProviderConfigured(provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google'): boolean {
+export function isProviderConfigured(provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google' | 'openapi'): boolean {
   const config = llmProviders.find(p => p.id === provider);
   if (!config) return false;
 

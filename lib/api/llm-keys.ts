@@ -27,7 +27,7 @@ const getConvexClient = () => {
  * @returns The API key or null if not found
  */
 export async function getLLMApiKey(
-  provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google',
+  provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google' | 'openapi',
   userId?: string
 ): Promise<string | null> {
   // First, try to get user-specific key if userId is provided
@@ -61,6 +61,7 @@ export async function getLLMApiKey(
     groq: 'GROQ_API_KEY',
     github: 'GITHUB_MODELS_API_KEY',
     google: 'GOOGLE_API_KEY',
+    openapi: 'OPENAPI_API_KEY',
   };
 
   const envKey = envKeyMap[provider];
@@ -79,7 +80,7 @@ export async function getLLMApiKey(
  * Check if a provider has an API key configured (either user or env)
  */
 export async function isProviderConfigured(
-  provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google',
+  provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google' | 'openapi',
   userId?: string
 ): Promise<boolean> {
   const apiKey = await getLLMApiKey(provider, userId);
@@ -90,7 +91,7 @@ export async function isProviderConfigured(
  * Get all configured providers for a user
  */
 export async function getConfiguredProviders(userId?: string): Promise<string[]> {
-  const providers: ('anthropic' | 'openai' | 'groq' | 'github' | 'google')[] = ['anthropic', 'openai', 'groq', 'github', 'google'];
+  const providers: ('anthropic' | 'openai' | 'groq' | 'github' | 'google' | 'openapi')[] = ['anthropic', 'openai', 'groq', 'github', 'google', 'openapi'];
   const configured: string[] = [];
 
   for (const provider of providers) {
@@ -107,7 +108,7 @@ export async function getConfiguredProviders(userId?: string): Promise<string[]>
  * This is a helper function that can be used by the execute routes
  */
 export async function initializeLLMClient(
-  provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google',
+  provider: 'anthropic' | 'openai' | 'groq' | 'github' | 'google' | 'openapi',
   userId?: string
 ): Promise<{ apiKey: string; provider: string }> {
   const apiKey = await getLLMApiKey(provider, userId);
@@ -137,10 +138,11 @@ export async function getProvidersStatus(userId?: string): Promise<{
   groq: { configured: boolean; source: 'user' | 'env' | null };
   github: { configured: boolean; source: 'user' | 'env' | null };
   google: { configured: boolean; source: 'user' | 'env' | null };
+  openapi: { configured: boolean; source: 'user' | 'env' | null };
 }> {
   const status: any = {};
 
-  for (const provider of ['anthropic', 'openai', 'groq', 'github', 'google'] as const) {
+  for (const provider of ['anthropic', 'openai', 'groq', 'github', 'google', 'openapi'] as const) {
     // Check user key first
     if (userId) {
       try {
@@ -166,6 +168,7 @@ export async function getProvidersStatus(userId?: string): Promise<{
       groq: 'GROQ_API_KEY',
       github: 'GITHUB_MODELS_API_KEY',
       google: 'GOOGLE_API_KEY',
+      openapi: 'OPENAPI_API_KEY',
     };
 
     const envKey = envKeyMap[provider];

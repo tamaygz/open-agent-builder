@@ -54,9 +54,17 @@ export default function NodePanel({
 
   // Get available models based on active API keys
   const getAvailableModels = () => {
-    if (!userLLMKeys) return [];
-
     const models: { provider: string; models: Array<{ id: string; name: string }> }[] = [];
+
+    // Always include Custom OpenAPI provider (configured via env vars on server)
+    models.push({
+      provider: 'Custom OpenAPI (Local)',
+      models: [
+        { id: 'openapi/gemma-3-4b', name: 'gemma-3-4b (LM Studio)' },
+      ]
+    });
+
+    if (!userLLMKeys) return models;
 
     // Check for active keys and add corresponding models
     const activeKeys = userLLMKeys.filter(key => key.isActive);
@@ -90,6 +98,7 @@ export default function NodePanel({
 
     return models;
   };
+
 
   // Helper to update JSON schema from fields array
   const updateSchemaFromFields = (
@@ -171,7 +180,7 @@ export default function NodePanel({
   const [name, setName] = useState(nodeData?.label || "My agent");
   const [instructions, setInstructions] = useState((nodeData as any)?.instructions || "");
   const [includeChatHistory, setIncludeChatHistory] = useState(true);
-  const [model, setModel] = useState("anthropic/claude-sonnet-4-5-20250929");
+  const [model, setModel] = useState("openapi/gemma-3-4b");
   const [outputFormat, setOutputFormat] = useState("Text");
   const [customModel, setCustomModel] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -205,7 +214,7 @@ export default function NodePanel({
       setName(data.name || data.nodeName || nodeData.label);
       setInstructions(incomingInstructions);
       setIncludeChatHistory(data.includeChatHistory ?? true);
-      setModel(data.model || "anthropic/claude-sonnet-4-5-20250929");
+      setModel(data.model || "openapi/gemma-3-4b");
       setOutputFormat(data.outputFormat || "Text");
       setShowSearchSources(data.showSearchSources ?? false);
       lastSyncedInstructionsRef.current = incomingInstructions;

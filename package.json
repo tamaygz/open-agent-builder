@@ -14,7 +14,7 @@
     "predev:all": "npm run deps:repair",
     "prebuild": "npm run deps:repair",
     "prestart": "npm run deps:repair",
-    "dev": "lsof -ti:3000,3001 | xargs kill -9 2>/dev/null || true && npm exec -- next dev",
+    "dev": "lsof -ti:3000,3001 | xargs kill -9 2>/dev/null || true && npm exec -- next dev -H 0.0.0.0",
     "convex:dev": "mkdir -p .convex-tmp && CONVEX_TMPDIR=$PWD/.convex-tmp npm exec -- convex dev --typecheck=disable",
     "dev:all": "npm exec -- concurrently \"npm run convex:dev\" \"npm run dev\"",
     "build": "npm exec -- next build",

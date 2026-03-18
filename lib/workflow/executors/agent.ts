@@ -10,7 +10,7 @@ import { resolveMCPServers, migrateMCPData } from '@/lib/mcp/resolver';
 export async function executeAgentNode(
   node: WorkflowNode,
   state: WorkflowState,
-  apiKeys?: { anthropic?: string; groq?: string; openai?: string; github?: string; google?: string; firecrawl?: string }
+  apiKeys?: { anthropic?: string; groq?: string; openai?: string; github?: string; google?: string; firecrawl?: string; openapi?: string }
 ): Promise<any> {
   const { data } = node;
 
@@ -404,6 +404,26 @@ export async function executeAgentNode(
       const response = await model.invoke(messages);
       responseText = response.content as string;
       usage = response.response_metadata?.usage || {};
+    } else if (provider === 'openapi' && apiKeys?.openapi) {
+      // Custom OpenAI-compatible endpoint (LM Studio, Ollama, Jan, etc.)
+      const OpenAI = (await import('openai')).default;
+      const baseURL = process.env.OPENAPI_BASE_URL || 'http://192.168.1.31:1234/v1';
+      const client = new OpenAI({
+        apiKey: apiKeys.openapi,
+        baseURL,
+      });
+
+      // Use the model name from env or node config
+      const resolvedModel = modelName || process.env.OPENAPI_MODEL || 'gemma-3-4b';
+
+      const response = await client.chat.completions.create({
+        model: resolvedModel,
+        messages: messages as any,
+        max_tokens: 4096,
+      });
+
+      responseText = response.choices[0]?.message?.content || '';
+      usage = (response.usage as unknown as LLMUsage) || {};
     } else {
       throw new Error(`No API key available for provider: ${provider}`);
     }
